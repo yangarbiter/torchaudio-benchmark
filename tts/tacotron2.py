@@ -220,6 +220,7 @@ def main(args):
     inv_norm = InverseSpectralNormalization()
 
     costs = []
+    n_frames = []
     for batch in tqdm(val_loader):
         (text_padded, text_lengths, mel_specgram_padded, mel_specgram_lengths), y = batch_to_gpu(batch)
         with torch.no_grad():
@@ -234,10 +235,10 @@ def main(args):
                 mel_specgram_padded[i, :, :mel_specgram_lengths[i]],
                 pred_mel_specgram[i, :, :pred_mel_lengths[i]],
                 metric=log_spec_dB_dist)
-            costs.append(min_cost)
+            costs.append(np.mean(min_cost))
+            n_frames.append(mel_specgram_lengths[i])
     
-    print(np.mean(costs))
-    print(sem(costs))
+    print(np.sum(costs) / np.sum(n_frames))
 
 
 
