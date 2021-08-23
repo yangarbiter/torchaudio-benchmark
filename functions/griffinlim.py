@@ -1,4 +1,3 @@
-from functools import partial
 import timeit
 
 import torchaudio
@@ -38,16 +37,20 @@ def main():
                 else:
                     print(f"[torchaudio {device} {dtype}]")
 
-                # TODO the first cuda run is slow
                 input = torch.clone(specgram).detach().to(device, dtype)
                 window = torch.clone(window).detach().to(device, dtype)
 
-                transform_fn = torchaudio.functional.griffinlim           
+                transform_fn = torchaudio.functional.griffinlim
                 if jitted:
                     transform_fn = torch.jit.script(transform_fn)
 
                 fn_str = 'transform_fn(input, window=window, n_fft=n_fft, hop_length=hop_length, win_length=win_length, ' \
                                       'power=power, n_iter=n_iter, momentum=momentum, length=length, rand_init=False)'
+
+                # To avoid the first cuda run being slow
+                # https://forums.developer.nvidia.com/t/execution-time-the-first-execution-time-is-always-slow/2387
+                exec(fn_str)
+
                 res = timeit.repeat(fn_str, repeat=repeat, number=number,
                                     globals={"transform_fn": transform_fn, "input": input, "window": window, "n_fft": n_fft,
                                              "hop_length": hop_length, "win_length": win_length, "power": power, "n_iter": n_iter,
@@ -60,6 +63,9 @@ def main():
         fn_str = "transform_fn(input, n_iter=n_iter, hop_length=hop_length, momentum=momentum, init=None, length=length)"
         transform_fn = librosa.griffinlim
         input = specgram_np.astype(dtype, copy=True)
+
+        exec(fn_str)  # for fair comparison
+
         res = timeit.repeat(fn_str, repeat=repeat, number=number,
                             globals={"transform_fn": transform_fn, "input": input, "n_iter": n_iter, "hop_length": hop_length,
                                      "momentum": momentum, "length": length})

@@ -6,6 +6,7 @@ import librosa
 import torch
 import numpy as np
 from scipy.stats import sem
+from espnet.transform.spectrogram import Spectrogram as EspnetSpectrogram
 
 
 from utils import get_whitenoise
@@ -37,8 +38,13 @@ def main():
                 else:
                     print(f"[torchaudio {device} {dtype}]")
 
-                # TODO the first cuda run is slow
+
                 waveform, transform_fn = prepare_torchaudio(sample_rate, duration, n_fft, hop_length, device, dtype)
+
+                # To avoid the first cuda run being slow
+                # https://forums.developer.nvidia.com/t/execution-time-the-first-execution-time-is-always-slow/2387
+                transform_fn(waveform)
+
                 if jitted:
                     transform_fn = torch.jit.script(transform_fn)
                 res = timeit.repeat('transform_fn(waveform)', repeat=5, number=100,
@@ -48,6 +54,9 @@ def main():
     for dtype in [np.float32, np.float64]:
         print(f"[librosa cpu {dtype}]")
         waveform, transform_fn = prepare_librosa(sample_rate, duration, n_fft, hop_length, dtype)
+
+        transform_fn(waveform)  # for fair comparison
+        
         res = timeit.repeat('transform_fn(waveform)', repeat=5, number=100,
                             globals={"transform_fn": transform_fn, "waveform": waveform})
         print(f"{np.mean(res)} +- {sem(res)}")
