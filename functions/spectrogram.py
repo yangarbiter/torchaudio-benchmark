@@ -64,7 +64,7 @@ def main():
         res = timeit.repeat('transform_fn(waveform)', repeat=repeat, number=number,
                             globals={"transform_fn": transform_fn, "waveform": waveform})
         print(f"{np.mean(res)} +- {sem(res)}")
-        results[("spectrogram", "librosa", str(device), str(dtype), int(False))] = (np.mean(res), sem(res))
+        results[("spectrogram", "librosa", "cpu", str(dtype), int(False))] = (np.mean(res), sem(res))
 
     print(results)
     update_results(results, "./results/results.pkl")

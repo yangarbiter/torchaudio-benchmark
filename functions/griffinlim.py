@@ -72,7 +72,7 @@ def main():
                             globals={"transform_fn": transform_fn, "input": input, "n_iter": n_iter, "hop_length": hop_length,
                                      "momentum": momentum, "length": length})
         print(f"{np.mean(res)} +- {sem(res)}")
-        results[("griffinlim", "librosa", str(device), str(dtype), int(False))] = (np.mean(res), sem(res))
+        results[("griffinlim", "librosa", "cpu", str(dtype), int(False))] = (np.mean(res), sem(res))
 
     print(results)
     update_results(results, "./results/results.pkl")

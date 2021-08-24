@@ -64,7 +64,7 @@ def main():
                             globals={"transform_fn": transform_fn, "spec_t": spec_t,
                                      "rate": rate, "hop_length": hop_length,})
         print(f"{np.mean(res)} +- {sem(res)}")
-        results[("phase vocoder", "librosa", str(device), str(dtype), int(False))] = (np.mean(res), sem(res))
+        results[("phase vocoder", "librosa", "cpu", str(dtype), int(False))] = (np.mean(res), sem(res))
 
     print(results)
     update_results(results, "./results/results.pkl")
