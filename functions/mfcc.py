@@ -6,8 +6,8 @@ import torch
 import numpy as np
 from scipy.stats import sem
 
+from utils import get_whitenoise, update_results
 
-from utils import get_whitenoise
 
 def prepare_torchaudio(sample_rate, duration, n_fft, hop_length, n_mels, n_mfcc, device, dtype):
     waveform = get_whitenoise(sample_rate=sample_rate, duration=duration, n_channels=1).to(device, dtype)
@@ -32,6 +32,10 @@ def prepare_librosa(sample_rate, duration, n_fft, hop_length, n_mels, n_mfcc, dt
     return waveform, transform_fn
 
 def main():
+    results = {}
+    repeat = 5
+    number = 100
+
     sample_rate = 16000
     n_fft = 400
     hop_length = 200
@@ -56,9 +60,10 @@ def main():
 
                 if jitted:
                     transform_fn = torch.jit.script(transform_fn)
-                res = timeit.repeat('transform_fn(waveform)', repeat=5, number=100,
+                res = timeit.repeat('transform_fn(waveform)', repeat=repeat, number=number,
                                     globals={"transform_fn": transform_fn, "waveform": waveform})
                 print(f"{np.mean(res)} +- {sem(res)}")
+                results[("mfcc", "torchaudio", str(device), str(dtype), int(jitted))] = (np.mean(res), sem(res))
 
     for dtype in [np.float32, np.float64]:
         print(f"[librosa cpu {dtype}]")
@@ -67,9 +72,13 @@ def main():
 
         transform_fn(waveform)  # for fair comparison
 
-        res = timeit.repeat('transform_fn(waveform)', repeat=5, number=100,
+        res = timeit.repeat('transform_fn(waveform)', repeat=repeat, number=number,
                             globals={"transform_fn": transform_fn, "waveform": waveform})
         print(f"{np.mean(res)} +- {sem(res)}")
+        results[("mfcc", "librosa", str(device), str(dtype), int(False))] = (np.mean(res), sem(res))
+
+    print(results)
+    update_results(results, "./results/results.pkl")
 
 
 if __name__ == "__main__":

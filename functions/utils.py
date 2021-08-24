@@ -1,6 +1,18 @@
-from typing import Union, Optional
+import os
+import re
+from typing import Union, Optional, Dict
 
 import torch
+import joblib
+
+
+def update_results(result: Dict, result_path):
+    cur_res = {}
+    if os.path.exists(result_path):
+        cur_res = joblib.load(result_path)
+
+    cur_res.update(result)
+    cur_res = joblib.dump(cur_res, result_path)
 
 
 def convert_tensor_encoding(

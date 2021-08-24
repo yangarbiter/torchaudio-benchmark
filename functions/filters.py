@@ -7,6 +7,7 @@ import numpy as np
 from scipy.stats import sem
 
 from sox_utils import save_wav, load_wav, run_sox_effect
+from utils import update_results
 
 
 def get_whitenoise_with_file(sample_rate, duration):
@@ -23,6 +24,7 @@ def run_sox(input_file, effect):
     return load_wav(output_file)
 
 def run_bandpass_biquad():
+    results = {}
     repeat = 5
     number = 100
 
@@ -36,7 +38,7 @@ def run_bandpass_biquad():
 
     # TODO extremely slow for GPU
 
-    for device in [torch.device('cpu'), torch.device('cuda:0')]:
+    for device in [torch.device('cpu')]:
         for dtype in [torch.float32, torch.float64]:
             for jitted in [False, True]:
                 if jitted:
@@ -56,6 +58,10 @@ def run_bandpass_biquad():
                                     globals={"transform_fn": transform_fn, "input": input, "sample_rate": sample_rate,
                                             "central_freq": central_freq, "q": q, "const_skirt_gain": const_skirt_gain})
                 print(f"{np.mean(res)} +- {sem(res)}")
+                results[("bandpass_biquad", "torchaudio", str(device), str(dtype), int(jitted))] = (np.mean(res), sem(res))
+
+    print(results)
+    update_results(results, "./results/results.pkl")
 
     # extremely slow due to the sox call
     #fn_str = "run_sox(path, ['bandpass', central_freq, f'{q}q'])"

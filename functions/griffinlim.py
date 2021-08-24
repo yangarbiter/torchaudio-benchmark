@@ -6,10 +6,11 @@ import torch
 import numpy as np
 from scipy.stats import sem
 
-from utils import get_whitenoise, get_spectrogram
+from utils import get_whitenoise, get_spectrogram, update_results
 
 
 def main():
+    results = {}
     repeat = 5
     number = 10
 
@@ -56,6 +57,7 @@ def main():
                                              "hop_length": hop_length, "win_length": win_length, "power": power, "n_iter": n_iter,
                                              "momentum": momentum, "length": length})
                 print(f"{np.mean(res)} +- {sem(res)}")
+                results[("griffinlim", "torchaudio", str(device), str(dtype), int(jitted))] = (np.mean(res), sem(res))
 
     for dtype in [np.float32, np.float64]:
         print(f"[librosa cpu {dtype}]")
@@ -70,6 +72,10 @@ def main():
                             globals={"transform_fn": transform_fn, "input": input, "n_iter": n_iter, "hop_length": hop_length,
                                      "momentum": momentum, "length": length})
         print(f"{np.mean(res)} +- {sem(res)}")
+        results[("griffinlim", "librosa", str(device), str(dtype), int(False))] = (np.mean(res), sem(res))
+
+    print(results)
+    update_results(results, "./results/results.pkl")
 
 
 if __name__ == "__main__":

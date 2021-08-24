@@ -8,8 +8,7 @@ import numpy as np
 from scipy.stats import sem
 from espnet.transform.spectrogram import Spectrogram as EspnetSpectrogram
 
-
-from utils import get_whitenoise
+from utils import get_whitenoise, update_results
 
 
 def prepare_torchaudio(sample_rate, duration, n_fft, hop_length, device, dtype):
@@ -25,6 +24,10 @@ def prepare_librosa(sample_rate, duration, n_fft, hop_length, dtype):
     return waveform, transform_fn
 
 def main():
+    results = {}
+    repeat = 5
+    number = 100
+
     sample_rate = 16000
     n_fft = 400
     hop_length = 200
@@ -47,9 +50,10 @@ def main():
 
                 if jitted:
                     transform_fn = torch.jit.script(transform_fn)
-                res = timeit.repeat('transform_fn(waveform)', repeat=5, number=100,
+                res = timeit.repeat('transform_fn(waveform)', repeat=repeat, number=number,
                                     globals={"transform_fn": transform_fn, "waveform": waveform})
                 print(f"{np.mean(res)} +- {sem(res)}")
+                results[("spectrogram", "torchaudio", str(device), str(dtype), int(jitted))] = (np.mean(res), sem(res))
 
     for dtype in [np.float32, np.float64]:
         print(f"[librosa cpu {dtype}]")
@@ -57,9 +61,13 @@ def main():
 
         transform_fn(waveform)  # for fair comparison
         
-        res = timeit.repeat('transform_fn(waveform)', repeat=5, number=100,
+        res = timeit.repeat('transform_fn(waveform)', repeat=repeat, number=number,
                             globals={"transform_fn": transform_fn, "waveform": waveform})
         print(f"{np.mean(res)} +- {sem(res)}")
+        results[("spectrogram", "librosa", str(device), str(dtype), int(False))] = (np.mean(res), sem(res))
+
+    print(results)
+    update_results(results, "./results/results.pkl")
 
 
 if __name__ == "__main__":

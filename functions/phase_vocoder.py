@@ -6,8 +6,11 @@ import torch
 import numpy as np
 from scipy.stats import sem
 
+from utils import update_results
+
 
 def main():
+    results = {}
     repeat = 5
     number = 10
 
@@ -46,6 +49,7 @@ def main():
                                     globals={"transform_fn": transform_fn, "spec_t": spec_t,
                                              "rate": rate, "phase_advance_t": phase_advance_t})
                 print(f"{np.mean(res)} +- {sem(res)}")
+                results[("phase vocoder", "torchaudio", str(device), str(dtype), int(jitted))] = (np.mean(res), sem(res))
 
     for dtype in [np.csingle, np.cdouble]:
         print(f"[librosa cpu {dtype}]")
@@ -60,6 +64,10 @@ def main():
                             globals={"transform_fn": transform_fn, "spec_t": spec_t,
                                      "rate": rate, "hop_length": hop_length,})
         print(f"{np.mean(res)} +- {sem(res)}")
+        results[("phase vocoder", "librosa", str(device), str(dtype), int(False))] = (np.mean(res), sem(res))
+
+    print(results)
+    update_results(results, "./results/results.pkl")
 
 
 if __name__ == "__main__":
