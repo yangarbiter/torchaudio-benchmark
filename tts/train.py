@@ -44,14 +44,14 @@ import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 from torch.optim import Adam
-from torchaudio.models.tacotron2 import Tacotron2
+from torchaudio.models import Tacotron2
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 
 from datasets import text_mel_collate_fn, split_process_dataset, SpectralNormalization
-#from utils import save_checkpoint
-#from loss import Tacotron2Loss
+from utils import save_checkpoint
+from loss import Tacotron2Loss
 from text.text_preprocessing import (
     available_symbol_set,
     available_phonemizers,

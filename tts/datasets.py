@@ -25,13 +25,14 @@
 #
 # *****************************************************************************
 
-from typing import Tuple, Callable, List
+import csv
+from typing import Tuple, Callable, List, Union
+import os
+from pathlib import Path
 
 import torch
 from torch import Tensor
-
-from torch.utils.data.dataset import random_split
-from torchaudio.datasets import LJSPEECH
+import torchaudio
 
 
 class SpectralNormalization(torch.nn.Module):
@@ -42,6 +43,58 @@ class SpectralNormalization(torch.nn.Module):
 class InverseSpectralNormalization(torch.nn.Module):
     def forward(self, input):
         return torch.exp(input)
+
+
+class LJSPEECHList(torch.utils.data.Dataset):
+    """Create a Dataset for LJSpeech-1.1.
+    """
+
+    def __init__(self,
+                 root: Union[str, Path],
+                 metadata_path: Union[str, Path],
+                 url: str = "https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2",
+                 folder_in_archive: str = "wavs") -> None:
+
+        self._parse_filesystem(root, url, folder_in_archive, metadata_path)
+
+    def _parse_filesystem(self, root, url, folder_in_archive, metadata_path) -> None:
+        root = Path(root)
+
+        basename = os.path.basename(url)
+
+        basename = Path(basename.split(".tar.bz2")[0])
+        folder_in_archive = basename / folder_in_archive
+
+        self._path = root / folder_in_archive
+
+        with open(metadata_path, "r", newline='') as metadata:
+            flist = csv.reader(metadata, delimiter="|", quoting=csv.QUOTE_NONE)
+            self._flist = list(flist)
+
+    def __getitem__(self, n: int) -> Tuple[Tensor, int, str, str]:
+        """Load the n-th sample from the dataset.
+
+        Args:
+            n (int): The index of the sample to be loaded
+
+        Returns:
+            tuple: ``(waveform, sample_rate, transcript, normalized_transcript)``
+        """
+        line = self._flist[n]
+        fileid_audio, transcript = line
+
+        # Load audio
+        waveform, sample_rate = torchaudio.load(fileid_audio)
+
+        return (
+            waveform,
+            sample_rate,
+            transcript,
+            None,
+        )
+
+    def __len__(self) -> int:
+        return len(self._flist)
 
 
 class MapMemoryCache(torch.utils.data.Dataset):
@@ -106,11 +159,8 @@ def split_process_dataset(dataset: str,
         val_dataset (`torch.utils.data.Dataset`): The validation set.
     """
     if dataset == 'ljspeech':
-        data = LJSPEECH(root=file_path, download=False)
-
-        val_length = int(len(data) * val_ratio)
-        lengths = [len(data) - val_length, val_length]
-        train_dataset, val_dataset = random_split(data, lengths)
+        train_dataset = LJSPEECHList(root=file_path, metadata_path="./data/ljs_audio_text_train_filelist.txt")
+        val_dataset = LJSPEECHList(root=file_path, metadata_path="./data/ljs_audio_text_test_filelist.txt")
     else:
         raise ValueError(f"Expected datasets: `ljspeech`, but found {dataset}")
 
