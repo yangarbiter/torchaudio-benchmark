@@ -33,6 +33,8 @@ from pathlib import Path
 import torch
 from torch import Tensor
 import torchaudio
+from torchaudio.datasets import LJSPEECH
+from torch.utils.data.dataset import random_split
 
 
 class SpectralNormalization(torch.nn.Module):
@@ -133,7 +135,7 @@ class Processed(torch.utils.data.Dataset):
 
     def process_datapoint(self, item):
         melspec = self.transforms(item[0])
-        text_norm = torch.IntTensor(self.text_preprocessor(item[2]))
+        text_norm = self.text_preprocessor(item[2])
         return text_norm, torch.squeeze(melspec, 0)
 
 
@@ -158,9 +160,15 @@ def split_process_dataset(dataset: str,
         train_dataset (`torch.utils.data.Dataset`): The training set.
         val_dataset (`torch.utils.data.Dataset`): The validation set.
     """
-    if dataset == 'ljspeech':
+    if dataset == 'ljspeech_nvidia':
         train_dataset = LJSPEECHList(root=file_path, metadata_path="./data/ljs_audio_text_train_filelist.txt")
         val_dataset = LJSPEECHList(root=file_path, metadata_path="./data/ljs_audio_text_test_filelist.txt")
+    elif dataset == 'ljspeech':
+        data = LJSPEECH(root=file_path, download=False)
+
+        val_length = int(len(data) * val_ratio)
+        lengths = [len(data) - val_length, val_length]
+        train_dataset, val_dataset = random_split(data, lengths)
     else:
         raise ValueError(f"Expected datasets: `ljspeech`, but found {dataset}")
 

@@ -68,7 +68,7 @@ logger = logging.getLogger(os.path.basename(__file__))
 def parse_args(parser):
     """Parse commandline arguments."""
 
-    parser.add_argument("--dataset", default="ljspeech", choices=["ljspeech"], type=str,
+    parser.add_argument("--dataset", default="ljspeech", choices=["ljspeech", "ljspeech_nvidia"], type=str,
                         help="select dataset to train with")
     parser.add_argument('--logging-dir', type=str, default=None,
                         help='directory to save the log files')

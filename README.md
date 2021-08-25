@@ -20,3 +20,19 @@ To run benchmark for filters, you need to install sox and run
 ```bash
 PATH=$HOME/torchaudio-benchmark/sox-14.4.2/src:$PATH python filters.py
 ```
+
+
+Install python-pesq
+
+```bash
+git clone https://github.com/ludlows/python-pesq.git
+cd python-pesq
+pip install .
+```
+
+
+Nvidia Tacotron2
+
+```bash
+pip install numpy scipy librosa unidecode inflect librosa
+```

@@ -5,15 +5,16 @@ Text-to-speech pipeline using Tacotron2.
 from functools import partial
 import argparse
 import random
+import os
 
 import torch
 import torchaudio
 from torch.utils.data import DataLoader
 import numpy as np
+from torchaudio.models import Tacotron2
 from torchaudio.models import tacotron2 as pretrained_tacotron2
 import librosa
 from tqdm import tqdm
-from scipy.stats import sem
 
 from datasets import (
     text_mel_collate_fn,
@@ -24,6 +25,7 @@ from datasets import (
 from text.text_preprocessing import (
     available_symbol_set,
     available_phonemizers,
+    get_symbol_list,
     text_to_sequence,
 )
 
@@ -35,6 +37,14 @@ def parse_args():
     from torchaudio.models.tacotron2 import _MODEL_CONFIG_AND_URLS as tacotron2_config_and_urls
 
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dataset", default="ljspeech", choices=["ljspeech", 'ljspeech_nvidia'], type=str,
+                        help="select dataset to train with")
+    parser.add_argument(
+        '--checkpoint-path',
+        type=str,
+        default=None,
+        help='[string] The name of the checkpoint to load.'
+    )
     parser.add_argument(
         '--checkpoint-name',
         type=str,
@@ -145,6 +155,7 @@ def get_datasets(args):
         checkpoint=args.phonemizer_checkpoint,
         cmudict_root=args.cmudict_root,
     )
+    text_preprocessor_2 = lambda x: torch.IntTensor(text_preprocessor(x))
 
     transforms = torch.nn.Sequential(
         torchaudio.transforms.MelSpectrogram(
@@ -163,7 +174,7 @@ def get_datasets(args):
         SpectralNormalization()
     )
     trainset, valset = split_process_dataset(
-        'ljspeech', "./", 0.1, transforms, text_preprocessor)
+        args.dataset, "./", 0.1, transforms, text_preprocessor_2)
     return trainset, valset
 
 
@@ -193,13 +204,22 @@ def main(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    tacotron2 = pretrained_tacotron2(args.checkpoint_name).to(device).eval()
+    n_symbols = len(get_symbol_list(args.text_preprocessor))
+
+    if args.checkpoint_path is not None:
+        tacotron2 = Tacotron2(n_symbol=n_symbols)
+        tacotron2.load_state_dict(
+            unwrap_distributed(torch.load(args.checkpoint_path, map_location=device)['state_dict']))
+        tacotron2 = tacotron2.to(device).eval()
+    else:
+        tacotron2 = pretrained_tacotron2(args.checkpoint_name).to(device).eval()
+
     if args.jit:
         tacotron2 = torch.jit.script(tacotron2)
 
     _, valset = get_datasets(args)
     loader_params = {
-        "batch_size": 16,
+        "batch_size": 32,
         "num_workers": 8,
         "prefetch_factor": 1024,
         'persistent_workers': True,
@@ -245,5 +265,11 @@ def main(args):
 if __name__ == "__main__":
     parser = parse_args()
     args, _ = parser.parse_known_args()
+
+    if args.text_preprocessor == "english_phonemes":
+        if not os.path.exists(os.path.join(args.cmudict_root, "cmudict-0.7b")):
+            from torchaudio.datasets import CMUDict
+            CMUDict(args.cmudict_root, download=True)
+
 
     main(args)
