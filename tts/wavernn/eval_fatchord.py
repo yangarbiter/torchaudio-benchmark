@@ -1,3 +1,9 @@
+"""
+3.462336988449097
+3.178738441467285
+0.9579072714495004
+"""
+
 import random
 
 import torch
@@ -24,7 +30,8 @@ def main():
 
     all_stois, pesqs_wb, pesqs_nb = [], [], []
     for i in tqdm(range(1, 51)):
-        pred, sample_rate = torchaudio.load(f"./fatchord/model_outputs/ljspeech_mol.wavernn/797k_steps_{i}_gen_batched_target11000_overlap550.wav")
+        #pred, sample_rate = torchaudio.load(f"./fatchord/model_outputs/ljspeech_mol.wavernn/797k_steps_{i}_gen_batched_target11000_overlap550.wav")
+        pred, sample_rate = torchaudio.load(f"./fatchord/model_outputs/ljspeech_mol.wavernn/797k_steps_{i}_gen_NOT_BATCHED.wav")
         idx = [dset._flist[j][0] for j in range(len(test_ids))]
         ref, sample_rate, _, _ = dset[idx.index(test_ids[i-1])]
 

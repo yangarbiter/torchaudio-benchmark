@@ -7,10 +7,11 @@
 import random
 
 import torch
-from torchaudio.transforms import GriffinLim, MelSpectrogram, Resample, InverseMelScale
+from torchaudio.transforms import MelSpectrogram, Resample, InverseMelScale
 from tqdm import tqdm
 import numpy as np
 import joblib
+import librosa
 
 from pesq import pesq
 from pystoi import stoi
@@ -33,7 +34,6 @@ def get_dataset():
 
 def main():
     torch.manual_seed(0)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     sample_rate = 22050
 
     mel_kwargs = {
@@ -58,21 +58,24 @@ def main():
             mel_scale="slaney",
             norm='slaney',
         ),
-        GriffinLim(
-            n_fft=2048,
-            power=1,
-            hop_length=275,
-            win_length=1100,
-            n_iter=32,
-        )
-    ).to(device)
+    )
 
     dset = get_dataset()
 
     preds = []
     for i in tqdm(range(50)):
         specgram = spec_transform(dset[i][0])
-        preds.append(vocoder(specgram.to(device)).cpu())
+        specgram = vocoder(specgram).cpu().numpy()
+        preds.append(
+            librosa.griffinlim(
+                specgram,
+                n_iter=32,
+                hop_length=275,
+                momentum=0.99,
+                init=None,
+                length=specgram.shape[1]
+            )
+        )
 
     all_stois, pesqs_wb, pesqs_nb = [], [], []
     for i in tqdm(range(50)):
