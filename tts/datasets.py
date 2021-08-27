@@ -135,7 +135,7 @@ class Processed(torch.utils.data.Dataset):
 
     def process_datapoint(self, item):
         melspec = self.transforms(item[0])
-        text_norm = self.text_preprocessor(item[2])
+        text_norm = torch.IntTensor(self.text_preprocessor(item[2]))
         return text_norm, torch.squeeze(melspec, 0)
 
 
