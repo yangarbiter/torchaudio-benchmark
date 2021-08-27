@@ -8,7 +8,8 @@
 #  --dataset ljspeech_nvidia \
 #  --checkpoint-path ./english_phonemes_ckpt.pth
 
-gpui python eval_tacotron2.py --checkpoint-path=./best_ckpt.pth --dataset ljspeech_nvidia
+# 2.3191067447891505
+#gpui python eval_tacotron2.py --checkpoint-path=./best_ckpt.pth --dataset ljspeech_nvidia
 
 # 2.283412922933646
 #gpui python eval_tacotron2.py \
