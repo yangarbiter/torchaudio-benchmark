@@ -41,7 +41,7 @@ def main():
         waveform = dset[i][0]
         specgram = spec_transform(waveform)
         specgram = vocoder(specgram).cpu().numpy()[0]
-        preds.append(
+        preds.append(torch.from_numpy(
             librosa.griffinlim(
                 specgram,
                 n_iter=32,
@@ -50,8 +50,8 @@ def main():
                 momentum=0.99,
                 init=None,
                 length=waveform.shape[1]
-            )
-        )
+            ).reshape(1, -1)
+        ))
 
     eval_results(preds, dset, sample_rate)
 

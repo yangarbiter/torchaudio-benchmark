@@ -1,4 +1,7 @@
 
+```bash
+pip install fairseq
+```
 
 Install deep phonemizer
 
