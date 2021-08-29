@@ -63,12 +63,12 @@ def main(args):
     )
 
 
-    wavernn_model = wavernn("wavernn_10k_epochs_8bits_ljspeech").eval().to(device)
-    wavernn_inference_model = WaveRNNInferenceWrapper(wavernn_model)
-    #wavernn_model = WaveRNN(upsample_scales=[5, 5, 11], n_classes=2**9, hop_length=275, n_freq=80)
-    #wavernn_model.load_state_dict(unwrap_distributed(torch.load(args.checkpoint_path)['state_dict']))
-    #wavernn_model.eval().to(device)
+    #wavernn_model = wavernn("wavernn_10k_epochs_8bits_ljspeech").eval().to(device)
     #wavernn_inference_model = WaveRNNInferenceWrapper(wavernn_model)
+    wavernn_model = WaveRNN(upsample_scales=[5, 5, 11], n_classes=2**10, hop_length=275, n_freq=80)
+    wavernn_model.load_state_dict(unwrap_distributed(torch.load(args.checkpoint_path)['state_dict']))
+    wavernn_model.eval().to(device)
+    wavernn_inference_model = WaveRNNInferenceWrapper(wavernn_model)
 
     (dset, _) = get_dataset()
     #loader = torch.utils.data.DataLoader(

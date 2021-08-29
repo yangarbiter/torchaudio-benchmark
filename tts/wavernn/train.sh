@@ -32,7 +32,7 @@
 srun -p train --cpus-per-task=96 -t 128:00:00 --gpus-per-node=8 \
   python main.py \
     --dataset ljspeech_fatchord \
-    --batch-size 2048 \
+    --batch-size 1024 \
     --workers 96 \
     --learning-rate 1e-4 \
     --n-freq 80 \
