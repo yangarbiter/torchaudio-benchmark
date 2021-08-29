@@ -4,9 +4,8 @@ import torch
 from torchaudio.transforms import MelSpectrogram
 from torchaudio.models import WaveRNN, wavernn
 from tqdm import tqdm
-import numpy as np
+import torchaudio
 
-from torchaudio.datasets import LJSPEECH
 from wavernn_inference_wrapper import WaveRNNInferenceWrapper
 from eval_utils import get_dataset, eval_results
 
@@ -30,6 +29,18 @@ class NormalizeDB(torch.nn.Module):
         return specgram
 
 
+def unwrap_distributed(state_dict):
+    r"""torch.distributed.DistributedDataParallel wraps the model with an additional "module.".
+    This function unwraps this layer so that the weights can be loaded on models with a single GPU.
+    Args:
+        state_dict: Original state_dict.
+    Return:
+        unwrapped_state_dict: Unwrapped state_dict.
+    """
+
+    return {k.replace('module.', ''): v for k, v in state_dict.items()}
+
+
 def main(args):
     torch.manual_seed(0)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -50,22 +61,24 @@ def main(args):
         MelSpectrogram(**mel_kwargs),
         NormalizeDB(min_level_db=-100, normalization=True),
     )
-    mel_specgram = transforms(waveform)
 
-    wavernn_model = WaveRNN()
-    wavernn_model.load_state_dict(torch.load(args.model_path)['state_dict'])
-    wavernn_model.eval().to(device)
+
+    wavernn_model = wavernn("wavernn_10k_epochs_8bits_ljspeech").eval().to(device)
     wavernn_inference_model = WaveRNNInferenceWrapper(wavernn_model)
+    #wavernn_model = WaveRNN(upsample_scales=[5, 5, 11], n_classes=2**9, hop_length=275, n_freq=80)
+    #wavernn_model.load_state_dict(unwrap_distributed(torch.load(args.checkpoint_path)['state_dict']))
+    #wavernn_model.eval().to(device)
+    #wavernn_inference_model = WaveRNNInferenceWrapper(wavernn_model)
 
-    dset = get_dataset()
-    loader = torch.utils.data.DataLoader(
-        dset,
-        batch_size=16,
-        shuffle=False,
-    )
+    (dset, _) = get_dataset()
+    #loader = torch.utils.data.DataLoader(
+    #    dset,
+    #    batch_size=1,
+    #    shuffle=False,
+    #)
 
     preds = []
-    for (waveform, _, _, _) in tqdm(loader):
+    for (waveform, _, _, _) in tqdm(dset):
         mel_specgram = transforms(waveform)
         with torch.no_grad():
             preds.append(
@@ -77,7 +90,10 @@ def main(args):
             #    wavernn_inference_model.infer_batch(mel_specgram.to(device),
             #                                        mulaw=True,).cpu().numpy()
             #)
-    preds = torch.cat(preds, axis=0)
+
+        torchaudio.save("temp.wav", preds[0], sample_rate=22050)
+        exit()
+    import ipdb; ipdb.set_trace()
     
     eval_results(preds, dset, sample_rate)
 

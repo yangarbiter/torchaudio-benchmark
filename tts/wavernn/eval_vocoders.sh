@@ -2,6 +2,9 @@
 python eval_wavernn.py --checkpoint-path ./wavernn_fatchord_ckpt.pt
 
 python eval_librosa_griffin_lim.py
+# 1.375499551296234
+# 1.0369670295715332
+# 0.839018336562249
 
 python eval_griffin_lim.py
 # 1.3719915890693664

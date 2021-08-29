@@ -14,7 +14,7 @@ import logging
 
 from fairseq import options
 
-from interactive_asr.utils import add_asr_eval_argument, setup_asr, get_microphone_transcription, transcribe_file
+from utils import add_asr_eval_argument, setup_asr, transcribe_file
 
 
 def main(args):
