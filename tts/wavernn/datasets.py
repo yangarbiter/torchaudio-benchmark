@@ -112,6 +112,7 @@ class Processed(torch.utils.data.Dataset):
 
 
 def split_process_dataset(args, transforms):
+    torch.manual_seed(0)
     if args.dataset == 'ljspeech':
         data = LJSPEECH(root=args.file_path, download=False)
 
@@ -198,3 +199,51 @@ def collate_factory(args):
         return waveform.unsqueeze(1), specgram.unsqueeze(1), target.unsqueeze(1)
 
     return raw_collate
+
+
+def raw_collate_fn(batch, kernel_size, hop_length, seq_len_factor, loss, mulaw, n_bits):
+
+    pad = (kernel_size - 1) // 2
+
+    # input waveform length
+    wave_length = hop_length * seq_len_factor
+    # input spectrogram length
+    spec_length = seq_len_factor + pad * 2
+
+    # max start postion in spectrogram
+    max_offsets = [x[1].shape[-1] - (spec_length + pad * 2) for x in batch]
+
+    # random start postion in spectrogram
+    spec_offsets = [random.randint(0, offset) for offset in max_offsets]
+    # random start postion in waveform
+    wave_offsets = [(offset + pad) * hop_length for offset in spec_offsets]
+
+    waveform_combine = [
+        x[0][wave_offsets[i]: wave_offsets[i] + wave_length + 1]
+        for i, x in enumerate(batch)
+    ]
+    specgram = [
+        x[1][:, spec_offsets[i]: spec_offsets[i] + spec_length]
+        for i, x in enumerate(batch)
+    ]
+
+    specgram = torch.stack(specgram)
+    waveform_combine = torch.stack(waveform_combine)
+
+    waveform = waveform_combine[:, :wave_length]
+    target = waveform_combine[:, 1:]
+
+    # waveform: [-1, 1], target: [0, 2**bits-1] if loss = 'crossentropy'
+    if loss == "crossentropy":
+
+        if mulaw:
+            mulaw_encode = MuLawEncoding(2 ** n_bits)
+            waveform = mulaw_encode(waveform)
+            target = mulaw_encode(target)
+
+            waveform = bits_to_normalized_waveform(waveform, n_bits)
+
+        else:
+            target = normalized_waveform_to_bits(target, n_bits)
+
+    return waveform.unsqueeze(1), specgram.unsqueeze(1), target.unsqueeze(1)

@@ -339,7 +339,6 @@ def main(args):
 
     best_loss = 10.0
 
-    print(args.checkpoint)
     if args.checkpoint and os.path.isfile(args.checkpoint):
         logging.info(f"Checkpoint: loading '{args.checkpoint}'")
         checkpoint = torch.load(args.checkpoint)
