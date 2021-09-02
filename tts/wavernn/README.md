@@ -1,0 +1,1 @@
+Download fatchord's pretrained model from https://github.com/fatchord/WaveRNN/raw/f3164a370b9517bab4f8526f2a28991f341a7b4a/pretrained/ljspeech.wavernn.mol.800k.zip

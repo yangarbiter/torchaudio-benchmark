@@ -4,7 +4,6 @@ import torch
 from torchaudio.transforms import MelSpectrogram
 from torchaudio.models import WaveRNN, wavernn
 from tqdm import tqdm
-import torchaudio
 
 from wavernn_inference_wrapper import WaveRNNInferenceWrapper
 from eval_utils import get_dataset, eval_results
@@ -63,21 +62,13 @@ def main(args):
     )
 
 
-    #wavernn_model = wavernn("wavernn_10k_epochs_8bits_ljspeech").eval().to(device)
-    #wavernn_inference_model = WaveRNNInferenceWrapper(wavernn_model)
-    wavernn_model = WaveRNN(upsample_scales=[5, 5, 11], n_classes=2**8, hop_length=275, n_freq=80)
-    wavernn_model.load_state_dict(unwrap_distributed(torch.load(args.checkpoint_path)['state_dict']))
+    wavernn_model = wavernn("wavernn_10k_epochs_8bits_ljspeech")
+    #wavernn_model = WaveRNN(upsample_scales=[5, 5, 11], n_classes=2**args.n_bits, hop_length=275, n_freq=80)
+    #wavernn_model.load_state_dict(unwrap_distributed(torch.load(args.checkpoint_path)['state_dict']))
     wavernn_model.eval().to(device)
     wavernn_inference_model = WaveRNNInferenceWrapper(wavernn_model)
 
     (dset, _) = get_dataset()
-    #loader = torch.utils.data.DataLoader(
-    #    dset,
-    #    batch_size=1,
-    #    shuffle=False,
-    #)
-
-    #dset = torchaudio.datasets.LJSPEECH(root="./", download=False)
 
     preds = []
     for (waveform, _, _, _) in tqdm(dset):
@@ -95,9 +86,9 @@ def main(args):
 
         #torchaudio.save("temp.wav", preds[0], sample_rate=sample_rate)
         #exit()
+    eval_results(preds, dset, sample_rate)
     import ipdb; ipdb.set_trace()
 
-    eval_results(preds, dset, sample_rate)
 
     #with torch.no_grad():
     #    pred = wavernn_inference_model(mel_specgram.to(device),
@@ -105,17 +96,6 @@ def main(args):
     #                                   batched=False,
     #                                   timesteps=100,
     #                                   overlap=5,).cpu().numpy()
-
-    #import ipdb; ipdb.set_trace()
-    #ref = waveform.numpy()
-    #len_diff = pred.shape[1] - ref.shape[1]
-    #stois = []
-    #for j in range(0, abs(len_diff), abs(len_diff) // 100):
-    #    if len_diff > 0:
-    #        stois.append(stoi(ref[0], pred[0, j: j + ref.shape[1]], sample_rate, extended=False))
-    #    else:
-    #        stois.append(stoi(ref[0, j: j + pred.shape[1]], pred[0], sample_rate, extended=False))
-    #print(np.max(stois))
 
 
 if __name__ == "__main__":
@@ -125,6 +105,12 @@ if __name__ == "__main__":
         "--checkpoint-path",
         type=str,
         help="number of data loading workers",
+    )
+    parser.add_argument(
+        "--n-bits",
+        type=int,
+        default=8,
+        help="",
     )
 
     args = parser.parse_args()

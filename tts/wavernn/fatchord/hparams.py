@@ -7,11 +7,12 @@ data_path = 'data/'
 
 # model ids are separate - that way you can use a new tts with an old wavernn and vice versa
 # NB: expect undefined behaviour if models were trained on different DSP settings
-voc_model_id = 'ljspeech_mol'
+voc_model_id = 'nofade_ljspeech_mol'
+#voc_model_id = 'ljspeech'
 tts_model_id = 'ljspeech_lsa_smooth_attention'
 
 # set this to True if you are only interested in WaveRNN
-ignore_tts = False
+ignore_tts = True
 
 
 # DSP --------------------------------------------------------------------------------------------------------------#
@@ -36,6 +37,7 @@ peak_norm = False                   # Normalise to the peak of each wav file
 
 # Model Hparams
 voc_mode = 'MOL'                    # either 'RAW' (softmax on raw bits) or 'MOL' (sample from mixture of logistics)
+#voc_mode = 'RAW'                    # either 'RAW' (softmax on raw bits) or 'MOL' (sample from mixture of logistics)
 voc_upsample_factors = (5, 5, 11)   # NB - this needs to correctly factorise hop_length
 voc_rnn_dims = 512
 voc_fc_dims = 512
