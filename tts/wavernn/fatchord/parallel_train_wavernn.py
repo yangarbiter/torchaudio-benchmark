@@ -101,4 +101,98 @@ def main():
     if not args.force_cpu and torch.cuda.is_available():
         device = torch.device('cuda')
         if args.batch_size % torch.cuda.device_count() != 0:
-            
+            raise ValueError('`batch_size` must be evenly divisible by n_gpus!')
+    else:
+        device = torch.device('cpu')
+    print('Using device:', device)
+
+    torch.manual_seed(0)
+    random.seed(0)
+
+    if 'MASTER_ADDR' not in os.environ:
+        os.environ['MASTER_ADDR'] = 'localhost'
+
+    if 'MASTER_PORT' not in os.environ:
+        os.environ['MASTER_PORT'] = '17778'
+
+    device_counts = torch.cuda.device_count()
+
+    logger.info(f"# available GPUs: {device_counts}")
+
+    if device_counts == 1:
+        train(0, 1, args)
+    else:
+        mp.spawn(train, args=(device_counts, args, ),
+                 nprocs=device_counts, join=True)
+
+    print('Training Complete.')
+    print('To continue training increase voc_total_steps in hparams.py or use --force_train')
+
+
+def voc_train_loop(paths: Paths, model: WaveRNN, loss_func, optimizer, train_set, test_set, lr, total_steps, rank, world_size):
+    # Use same device as model parameters
+    device = next(model.parameters()).device
+
+    for g in optimizer.param_groups: g['lr'] = lr
+
+    total_iters = len(train_set)
+    epochs = (total_steps - model.get_step()) // total_iters + 1
+
+    for e in range(1, epochs + 1):
+
+        start = time.time()
+        running_loss = 0.
+
+        for i, (x, y, m) in enumerate(train_set, 1):
+            x, m, y = x.to(device), m.to(device), y.to(device)
+
+            # Parallelize model onto GPUS using workaround due to python bug
+            y_hat = model(x, m)
+
+            if model.mode == 'RAW':
+                y_hat = y_hat.transpose(1, 2).unsqueeze(-1)
+
+            elif model.mode == 'MOL':
+                y = y.float()
+
+            y = y.unsqueeze(-1)
+
+
+            loss = loss_func(y_hat, y)
+
+            optimizer.zero_grad()
+            loss.backward()
+            if hp.voc_clip_grad_norm is not None:
+                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), hp.voc_clip_grad_norm)
+                #if np.isnan(grad_norm):
+                #    print('grad_norm was NaN!')
+            optimizer.step()
+
+            running_loss += loss.item()
+            avg_loss = running_loss / i
+
+            speed = i / (time.time() - start)
+
+            step = model.get_step()
+            k = step // 1000
+
+            if rank == 0 and step % hp.voc_checkpoint_every == 0:
+                gen_testset(model, test_set, hp.voc_gen_at_checkpoint, hp.voc_gen_batched,
+                            hp.voc_target, hp.voc_overlap, paths.voc_output)
+                ckpt_name = f'wave_step{k}K'
+                save_checkpoint('voc', paths, model, optimizer,
+                                name=ckpt_name, is_silent=True)
+
+            msg = f'| Epoch: {e}/{epochs} ({i}/{total_iters}) | Loss: {avg_loss:.4f} | {speed:.1f} steps/s | Step: {k}k | '
+            stream(msg)
+
+        # Must save latest optimizer state to ensure that resuming training
+        # doesn't produce artifacts
+        if rank == 0:
+            save_checkpoint('voc', paths, model, optimizer, is_silent=True)
+            model.log(paths.voc_log, msg)
+            print(' ')
+
+
+if __name__ == "__main__":
+    main()
