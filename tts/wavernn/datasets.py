@@ -166,8 +166,8 @@ class Processed(torch.utils.data.Dataset):
 def split_process_dataset(args, transforms):
     torch.manual_seed(0)
     if args.dataset == 'ljspeech_nvidia':
-        train_dataset = LJSPEECHList(root=args.file_path, metadata_path="../data/ljs_audio_text_train_filelist.txt")
-        val_dataset = LJSPEECHList(root=args.file_path, metadata_path="../data/ljs_audio_text_test_filelist.txt")
+        train_dataset = LJList2(root=args.file_path, metadata_path="../data/ljs_audio_text_train_filelist.txt")
+        val_dataset = LJList2(root=args.file_path, metadata_path="../data/ljs_audio_text_test_filelist.txt")
 
     elif args.dataset == 'ljspeech':
         data = LJSPEECH(root=args.file_path, download=False)
