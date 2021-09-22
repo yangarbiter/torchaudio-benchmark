@@ -65,7 +65,7 @@ def parse_args():
     parser.add_argument(
         "--dataset",
         default="ljspeech",
-        choices=["ljspeech", "libritts", "ljspeech_fatchord"],
+        choices=["ljspeech", "libritts", "ljspeech_fatchord", "ljspeech_nvidia"],
         type=str,
         help="select dataset to train with",
     )
