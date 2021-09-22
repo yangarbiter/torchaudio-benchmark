@@ -12,7 +12,8 @@ import torch.nn.functional as F
 from utils.display import stream, simple_table
 from utils.dataset import get_vocoder_datasets_ddp
 from utils.distribution import discretized_mix_logistic_loss
-from utils import hparams as hp
+# from utils import __HParams
+import hparams as hp
 from models.fatchord_version import WaveRNN
 from gen_wavernn import gen_testset
 from utils.paths import Paths
@@ -26,24 +27,14 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
 logger = logging.getLogger(os.path.basename(__file__))
 
 
-def train(rank, world_size, args):
-    hp.configure(args.hp_file)  # load hparams from file
-    if args.lr is None:
-        args.lr = hp.voc_lr
-    if args.batch_size is None:
-        args.batch_size = hp.voc_batch_size
-
-    paths = Paths(hp.data_path, hp.voc_model_id, hp.tts_model_id)
-
-    batch_size = args.batch_size
-    force_train = args.force_train
-    train_gta = args.gta
-    lr = args.lr
+def train(rank, world_size, paths, args):
+    print(rank)
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
     torch.manual_seed(0)
 
     torch.cuda.set_device(rank)
-    device = f"cuda:{rank}
+    device = "cuda:{}".format(rank)
 
     print('\nInitialising Model...\n')
 
@@ -69,21 +60,21 @@ def train(rank, world_size, args):
     optimizer = optim.Adam(voc_model.parameters())
     restore_checkpoint('voc', paths, voc_model, optimizer, create_if_missing=True)
 
-    train_set, test_set = get_vocoder_datasets_ddp(paths.data, batch_size, train_gta, rank, world_size)
+    train_set, test_set = get_vocoder_datasets_ddp(paths.data, args.batch_size, args.gta, rank, world_size)
 
-    total_steps = 10_000_000 if force_train else hp.voc_total_steps
+    total_steps = 10_000_000 if args.force_train else hp.voc_total_steps
 
-    simple_table([('Remaining', str((total_steps - voc_model.get_step())//1000) + 'k Steps'),
-                  ('Batch Size', batch_size),
-                  ('LR', lr),
+    simple_table([('Remaining', str((total_steps - voc_model.module.get_step())//1000) + 'k Steps'),
+                  ('Batch Size', args.batch_size),
+                  ('LR', args.lr),
                   ('Sequence Len', hp.voc_seq_len),
-                  ('GTA Train', train_gta)])
+                  ('GTA Train', args.gta)])
 
-    loss_func = F.cross_entropy if voc_model.mode == 'RAW' else discretized_mix_logistic_loss
+    loss_func = F.cross_entropy if voc_model.module.mode == 'RAW' else discretized_mix_logistic_loss
 
     dist.barrier()
 
-    voc_train_loop(paths, voc_model, loss_func, optimizer, train_set, test_set, lr, total_steps, rank, world_size)
+    voc_train_loop(paths, voc_model, loss_func, optimizer, train_set, test_set, args.lr, total_steps, rank, world_size)
 
 def main():
     # Parse Arguments
@@ -95,8 +86,19 @@ def main():
     parser.add_argument('--force_cpu', '-c', action='store_true', help='Forces CPU-only training, even when in CUDA capable environment')
     parser.add_argument('--hp_file', metavar='FILE', default='hparams.py', help='The file to use for the hyperparameters')
     args = parser.parse_args()
+    #hp.configure(args.hp_file)  # load hparams from file
+    # hp = __HParams()
+    # hp.configure(args.hp_file)
+    if args.lr is None:
+        args.lr = hp.voc_lr
+    if args.batch_size is None:
+        args.batch_size = hp.voc_batch_size
+    paths = Paths(hp.data_path, hp.voc_model_id, hp.tts_model_id)
 
-
+    batch_size = args.batch_size
+    force_train = args.force_train
+    train_gta = args.gta
+    lr = args.lr
 
     if not args.force_cpu and torch.cuda.is_available():
         device = torch.device('cuda')
@@ -120,9 +122,9 @@ def main():
     logger.info(f"# available GPUs: {device_counts}")
 
     if device_counts == 1:
-        train(0, 1, args)
+        train(0, 1, paths, args)
     else:
-        mp.spawn(train, args=(device_counts, args, ),
+        mp.spawn(train, args=(device_counts, paths, args, ),
                  nprocs=device_counts, join=True)
 
     print('Training Complete.')
@@ -136,7 +138,7 @@ def voc_train_loop(paths: Paths, model: WaveRNN, loss_func, optimizer, train_set
     for g in optimizer.param_groups: g['lr'] = lr
 
     total_iters = len(train_set)
-    epochs = (total_steps - model.get_step()) // total_iters + 1
+    epochs = (total_steps - model.module.get_step()) // total_iters + 1
 
     for e in range(1, epochs + 1):
 
@@ -149,10 +151,10 @@ def voc_train_loop(paths: Paths, model: WaveRNN, loss_func, optimizer, train_set
             # Parallelize model onto GPUS using workaround due to python bug
             y_hat = model(x, m)
 
-            if model.mode == 'RAW':
+            if model.module.mode == 'RAW':
                 y_hat = y_hat.transpose(1, 2).unsqueeze(-1)
 
-            elif model.mode == 'MOL':
+            elif model.module.mode == 'MOL':
                 y = y.float()
 
             y = y.unsqueeze(-1)
@@ -173,7 +175,7 @@ def voc_train_loop(paths: Paths, model: WaveRNN, loss_func, optimizer, train_set
 
             speed = i / (time.time() - start)
 
-            step = model.get_step()
+            step = model.module.get_step()
             k = step // 1000
 
             if rank == 0 and step % hp.voc_checkpoint_every == 0:
