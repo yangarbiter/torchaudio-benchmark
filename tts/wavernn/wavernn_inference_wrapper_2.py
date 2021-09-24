@@ -225,10 +225,17 @@ class WaveRNNInferenceWrapper(torch.nn.Module):
             logits = self.wavernn_model.fc3(x)
 
             if loss_name == "crossentropy":
-                posterior = F.softmax(logits, dim=1)
+                #posterior = F.softmax(logits, dim=1)
 
-                x = torch.multinomial(posterior, 1).float()
-                x = bits_to_normalized_waveform(x, n_bits)
+                #x = torch.multinomial(posterior, 1).float()
+                #x = bits_to_normalized_waveform(x, n_bits)
+                #output.append(x.squeeze(-1))
+
+                posterior = F.softmax(logits, dim=1)
+                distrib = torch.distributions.Categorical(posterior)
+
+                x = 2 * distrib.sample().float() / (self.wavernn_model.n_classes - 1.) - 1.
+                x = x.unsqueeze(-1)
                 output.append(x.squeeze(-1))
             else:
                 raise ValueError(f"Unexpected loss_name: '{loss_name}'. "
