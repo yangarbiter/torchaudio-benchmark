@@ -160,7 +160,10 @@ def split_process_dataset(dataset: str,
         train_dataset (`torch.utils.data.Dataset`): The training set.
         val_dataset (`torch.utils.data.Dataset`): The validation set.
     """
-    if dataset == 'ljspeech_nvidia':
+    if dataset == 'ljspeech_nvidia_v2':
+        train_dataset = LJSPEECHList(root=file_path, metadata_path="./data/ljs_audio_text_train_filelist.txt")
+        val_dataset = LJSPEECHList(root=file_path, metadata_path="./data/ljs_audio_text_val_filelist.txt")
+    elif dataset == 'ljspeech_nvidia':
         train_dataset = LJSPEECHList(root=file_path, metadata_path="./data/ljs_audio_text_train_filelist.txt")
         val_dataset = LJSPEECHList(root=file_path, metadata_path="./data/ljs_audio_text_test_filelist.txt")
     elif dataset == 'ljspeech':
