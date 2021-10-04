@@ -401,6 +401,7 @@ def train(rank, world_size, args):
         "collate_fn": partial(text_mel_collate_fn, n_frames_per_step=args.n_frames_per_step),
     }
 
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.1)
     train_loader = DataLoader(trainset, sampler=train_sampler, **loader_params)
     val_loader = DataLoader(valset, sampler=val_sampler, **loader_params)
     dist.barrier()
@@ -417,8 +418,8 @@ def train(rank, world_size, args):
             iterator = enumerate(train_loader)
 
         for i, batch in iterator:
-            adjust_learning_rate(epoch, optimizer, args.learning_rate,
-                                 args.anneal_steps, args.anneal_factor)
+            #adjust_learning_rate(epoch, optimizer, args.learning_rate,
+            #                     args.anneal_steps, args.anneal_factor)
 
             model.zero_grad()
 
@@ -481,6 +482,8 @@ def train(rank, world_size, args):
                     is_best,
                     args.checkpoint_path,
                 )
+            
+        scheduler.step()
 
     dist.destroy_process_group()
 
