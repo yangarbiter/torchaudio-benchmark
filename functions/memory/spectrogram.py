@@ -76,7 +76,7 @@ def main():
             usages.append(np.max(ret) - ret[0])
 
         print(f"{np.mean(usages)} +- {sem(usages)}")
-        results[("spectrogram", "librosa", "cpu", str(dtype), int(jitted))] = (np.mean(usages), sem(usages))
+        results[("spectrogram", "librosa", "cpu", str(dtype), int(False))] = (np.mean(usages), sem(usages))
 
     print(results)
     update_results(results, "./results/results.pkl")

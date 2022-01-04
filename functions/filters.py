@@ -71,7 +71,7 @@ def run_bandpass_biquad():
 
 def main():
     run_bandpass_biquad()
-                        
+
 
 if __name__ == "__main__":
     main()
