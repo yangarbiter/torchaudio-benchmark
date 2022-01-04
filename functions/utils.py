@@ -6,6 +6,12 @@ import torch
 import joblib
 
 
+memusage_kwargs = {
+    "interval": .1,
+    "include_children": True,
+    "multiprocess": True,
+}
+
 def update_results(result: Dict, result_path):
     cur_res = {}
     if os.path.exists(result_path):
