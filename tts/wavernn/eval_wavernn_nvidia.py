@@ -71,25 +71,28 @@ def main(args):
 
     preds = []
     for i, (waveform, _, _, _) in tqdm(enumerate(dset), total=len(dset)):
+        if i < 350:
+            continue
         mel_specgram = transforms(waveform)
         with torch.no_grad():
             preds.append(
                wavernn_inference_model(mel_specgram.to(device),
                                        mulaw=True,
-                                       batched=True).cpu()
+                                       batched=False).cpu()
             )
 
-        torchaudio.save(f"wavs/wavernn_nvidia_batched/{i:04d}.wav", preds[-1], sample_rate=sample_rate)
+        #torchaudio.save(f"wavs/wavernn_nvidia_batched/{i:04d}.wav", preds[-1], sample_rate=sample_rate)
+        torchaudio.save(f"wavs/wavernn_nvidia_nobatched/{i:04d}.wav", preds[-1], sample_rate=sample_rate)
         #exit()
-    eval_results(preds, dset, sample_rate)
     import ipdb; ipdb.set_trace()
+    eval_results(preds, dset, sample_rate)
 
 
 def eval_audio_files():
     dset = LJList2(root="./", metadata_path="../data/ljs_audio_text_test_filelist.txt")
 
     preds = []
-    for i in range(250):
+    for i in range(250, 500):
         #pred, sample_rate = torchaudio.load(f"wavs/wavernn_nvidia_batched/{i:04d}.wav")
         pred, sample_rate = torchaudio.load(f"wavs/wavernn_nvidia_nobatched/{i:04d}.wav")
         preds.append(pred)

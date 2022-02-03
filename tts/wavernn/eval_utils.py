@@ -13,7 +13,7 @@ from pystoi import stoi
 def eval_results(preds, dset, sample_rate, with_stoi=True, subsample_stoi=None):
     all_stois, pesqs_wb, pesqs_nb = [], [], []
     for i in tqdm(range(len(preds))):
-        pred, ref = preds[i], dset[i][0]
+        pred, ref = preds[i], dset[i+250][0]
 
         resampler = Resample(sample_rate, 16000, dtype=ref.dtype)
         re_pred = resampler(pred).numpy()
@@ -22,7 +22,7 @@ def eval_results(preds, dset, sample_rate, with_stoi=True, subsample_stoi=None):
         pesqs_nb.append(pesq(16000, re_ref[0], re_pred[0], 'nb'))
         pesqs_wb.append(pesq(16000, re_ref[0], re_pred[0], 'wb'))
 
-        pred, ref = preds[i].numpy(), dset[i][0].numpy()
+        pred, ref = preds[i].numpy(), dset[i+250][0].numpy()
         len_diff = pred.shape[1] - ref.shape[1]
         if with_stoi:
             stois = []

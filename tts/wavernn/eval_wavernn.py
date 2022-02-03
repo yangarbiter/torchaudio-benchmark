@@ -4,6 +4,7 @@ import torch
 from torchaudio.transforms import MelSpectrogram
 from torchaudio.models import WaveRNN, wavernn
 from tqdm import tqdm
+import torchaudio
 
 from wavernn_inference_wrapper import WaveRNNInferenceWrapper
 from eval_utils import get_dataset, eval_results
@@ -71,7 +72,7 @@ def main(args):
     (dset, _) = get_dataset()
 
     preds = []
-    for (waveform, _, _, _) in tqdm(dset):
+    for i, (waveform, _, _, _) in tqdm(enumerate(dset), total=len(dset)):
         mel_specgram = transforms(waveform)
         with torch.no_grad():
             preds.append(
@@ -84,7 +85,7 @@ def main(args):
             #                                        mulaw=True,).cpu().numpy()
             #)
 
-        #torchaudio.save("temp.wav", preds[0], sample_rate=sample_rate)
+        torchaudio.save(f"wavs/wavernn_fatchord_nobatched/{i:04d}.wav", preds[-1], sample_rate=sample_rate)
         #exit()
     eval_results(preds, dset, sample_rate)
     import ipdb; ipdb.set_trace()

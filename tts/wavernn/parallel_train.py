@@ -77,8 +77,8 @@ def parse_args():
     )
     parser.add_argument("--clip-grad", metavar="NORM", type=float, default=4.0)
     parser.add_argument(
-        "--mulaw",
-        default=True,
+        "--no-mulaw",
+        default=False,
         action="store_true",
         help="if used, waveform is mulaw encoded",
     )
@@ -190,6 +190,8 @@ def train_one_epoch(model, criterion, optimizer, data_loader, clip_grad, device,
         metric["epoch"] = epoch
 
     for waveform, specgram, target in bg_iterator(data_loader, maxsize=2):
+
+        import ipdb; ipdb.set_trace()
 
         start2 = time()
 
@@ -313,17 +315,20 @@ def train(rank, world_size, args):
         hop_length=args.hop_length,
         seq_len_factor=args.seq_len_factor,
         loss=args.loss,
-        mulaw=args.mulaw,
+        mulaw=(not args.no_mulaw),
         n_bits=args.n_bits,
     )
     #collate_fn = collate_factory(args)
 
-    train_sampler = torch.utils.data.distributed.DistributedSampler(
-        train_dataset,
-        shuffle=True,
-        num_replicas=world_size,
-        rank=rank,
-    )
+    if world_size > 1:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            train_dataset,
+            shuffle=True,
+            num_replicas=world_size,
+            rank=rank,
+        )
+    else:
+        train_sampler = None
 
     train_loader = DataLoader(
         train_dataset,
@@ -342,6 +347,7 @@ def train(rank, world_size, args):
 
     n_classes = 2 ** args.n_bits if args.loss == "crossentropy" else 30
 
+    torch.manual_seed(0)
     model = WaveRNN(
         upsample_scales=args.upsample_scales,
         n_classes=n_classes,

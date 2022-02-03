@@ -5,7 +5,8 @@ from torchaudio.transforms import MelSpectrogram
 from torchaudio.models import WaveRNN, wavernn
 from tqdm import tqdm
 
-from wavernn_inference_wrapper_2 import WaveRNNInferenceWrapper
+from wavernn_inference_wrapper_3 import WaveRNNInferenceWrapper
+#from wavernn_inference_wrapper_2 import WaveRNNInferenceWrapper
 from eval_utils import get_dataset, eval_results
 
 
@@ -61,7 +62,6 @@ def main(args):
         NormalizeDB(min_level_db=-100, normalization=True),
     )
 
-
     #wavernn_model = wavernn("wavernn_10k_epochs_8bits_ljspeech")
     wavernn_model = WaveRNN(upsample_scales=[5, 5, 11], n_classes=2**args.n_bits, hop_length=275, n_freq=80)
     wavernn_model.load_state_dict(unwrap_distributed(torch.load(args.checkpoint_path)['state_dict']))
@@ -71,30 +71,16 @@ def main(args):
     (dset, _) = get_dataset()
 
     preds = []
-    for (waveform, _, _, _) in tqdm(dset):
-        mel_specgram = transforms(waveform)
+    for i, (waveform, _, _, _) in tqdm(enumerate(dset), total=len(dset)):
         with torch.no_grad():
             preds.append(
-               wavernn_inference_model(mel_specgram.to(device),
-                                       mulaw=True,
-                                       batched=False).cpu().reshape(1, -1)
+               torch.from_numpy(wavernn_inference_model.generate(mel_specgram.unsqueeze(0).to(device),
+                                       mu_law=True,
+                                       batched=True)).cpu().reshape(1, -1).float()
             )
-            #preds.append(
-            #    wavernn_inference_model.infer_batch(mel_specgram.to(device),
-            #                                        mulaw=True,).cpu().numpy()
-            #)
 
-        #torchaudio.save("temp.wav", preds[0], sample_rate=sample_rate)
-        #exit()
     eval_results(preds, dset, sample_rate)
 
-
-    #with torch.no_grad():
-    #    pred = wavernn_inference_model(mel_specgram.to(device),
-    #                                   mulaw=True,
-    #                                   batched=False,
-    #                                   timesteps=100,
-    #                                   overlap=5,).cpu().numpy()
 
 
 if __name__ == "__main__":

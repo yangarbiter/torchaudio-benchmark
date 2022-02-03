@@ -48,12 +48,18 @@ def gen_torchaudio(ver="v1", vocoder="wavernn"):
     elif ver == "v2":
         from wavernn_inference_wrapper_3 import WaveRNNInferenceWrapper
 
-    res = torch.load("./models/wavernn_bs96_lr1.7_ep2000_rm_adjlr_ckpt.pth")
+    #res = torch.load("./models/wavernn_bs96_lr1.7_ep2000_rm_adjlr_ckpt.pth")
+    #res = torch.load("./models/best_ljspeech_nvidia_v2_wavernn_bs96_lr1.7_ep2000_ckpt.pth")
+    res = torch.load("./models/best_ljspeech_nvidia_v2_wavernn_bs96_lr1.7_ep2000_step_scheduler.pth")
     tacotron2 = Tacotron2(n_symbol=38).eval().to(device)
     tacotron2.load_state_dict({k.replace("module.", ""): v for k, v, in res['state_dict'].items()})
 
     if vocoder == "wavernn":
-        #res = torch.load("./models/parallel_wavernn_nvidia_ckpt_bs32.pt")
+        res = torch.load("./models/parallel_wavernn_nvidia_ckpt_bs32.pt")
+        wavernn_model = WaveRNN(upsample_scales=[5, 5, 11], n_classes=2**8, hop_length=275, n_freq=80)
+        wavernn_model.load_state_dict({k.replace("module.", ""): v for k, v, in res['state_dict'].items()})
+        wavernn_inference_model = WaveRNNInferenceWrapper(wavernn_model).eval().to(device)
+    elif vocoder == "wavernn2":
         res = torch.load("./models/parallel_wavernn_ljspeech_fatchord_ckpt_bs32_ep20k.pt")
         wavernn_model = WaveRNN(upsample_scales=[5, 5, 11], n_classes=2**8, hop_length=275, n_freq=80)
         wavernn_model.load_state_dict({k.replace("module.", ""): v for k, v, in res['state_dict'].items()})
@@ -117,7 +123,7 @@ def gen_torchaudio(ver="v1", vocoder="wavernn"):
         else:
             with torch.no_grad():
                 mel = transforms(mel)
-                if vocoder == "wavernn":
+                if vocoder in ["wavernn", "wavernn2"]:
                     batched = False
                 elif vocoder == "fatchord":
                     batched = True
@@ -131,6 +137,8 @@ def gen_torchaudio(ver="v1", vocoder="wavernn"):
         audio = audio.reshape(1, -1)
         if ver == "v1" and vocoder == "wavernn":
             torchaudio.save(filepath=f"./audio_samples/torchaudio/torchaudio_{sample_no:04d}.wav", src=audio, sample_rate=sample_rate)
+        if vocoder == "wavernn2":
+            torchaudio.save(filepath=f"./audio_samples/torchaudio3/torchaudio3_{sample_no:04d}.wav", src=audio, sample_rate=sample_rate)
         elif ver == "v2" and vocoder == "wavernn":
             torchaudio.save(filepath=f"./audio_samples/torchaudio2/torchaudio2_{sample_no:04d}.wav", src=audio, sample_rate=sample_rate)
         elif ver == "v1" and vocoder == "fatchord":
@@ -142,7 +150,8 @@ def gen_torchaudio(ver="v1", vocoder="wavernn"):
 
 
 def main():
-    gen_torchaudio()
+    #gen_torchaudio()
+    gen_torchaudio("v1", "wavernn2")
     #gen_torchaudio("v2")
     #gen_torchaudio("v1", "fatchord")
     #gen_torchaudio("v1", "griffin-lim")

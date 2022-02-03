@@ -48,12 +48,15 @@ def get_vocoder_datasets_ddp(path: Path, batch_size, train_gta, rank, world_size
     train_dataset = VocoderDataset(path, train_ids, train_gta)
     test_dataset = VocoderDataset(path, test_ids, train_gta)
     
-    train_sampler = torch.utils.data.distributed.DistributedSampler(
-        train_dataset,
-        shuffle=True,
-        num_replicas=world_size,
-        rank=rank,
-    )
+    if world_size > 1:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            train_dataset,
+            shuffle=True,
+            num_replicas=world_size,
+            rank=rank,
+        )
+    else:
+        train_sampler = None
 
     train_set = DataLoader(train_dataset,
                            collate_fn=collate_vocoder,
@@ -61,7 +64,7 @@ def get_vocoder_datasets_ddp(path: Path, batch_size, train_gta, rank, world_size
                            num_workers=2,
                            persistent_workers=True,
                            sampler=train_sampler,
-                           shuffle=True,
+                           shuffle=False,
                            pin_memory=True)
 
     test_set = DataLoader(test_dataset,
@@ -92,8 +95,9 @@ def get_vocoder_datasets(path: Path, batch_size, train_gta):
     train_set = DataLoader(train_dataset,
                            collate_fn=collate_vocoder,
                            batch_size=batch_size,
-                           num_workers=2,
-                           shuffle=True,
+                           num_workers=1,
+                           #shuffle=True,
+                           shuffle=False,
                            pin_memory=True)
 
     test_set = DataLoader(test_dataset,
@@ -106,14 +110,21 @@ def get_vocoder_datasets(path: Path, batch_size, train_gta):
 
 
 def collate_vocoder(batch):
+    random_state = np.random.RandomState(0)
+    print(batch)
+
     mel_win = hp.voc_seq_len // hp.hop_length + 2 * hp.voc_pad
     max_offsets = [x[0].shape[-1] -2 - (mel_win + 2 * hp.voc_pad) for x in batch]
-    mel_offsets = [np.random.randint(0, offset) for offset in max_offsets]
+    mel_offsets = [random_state.randint(0, offset) for offset in max_offsets]
     sig_offsets = [(offset + hp.voc_pad) * hp.hop_length for offset in mel_offsets]
 
     mels = [x[0][:, mel_offsets[i]:mel_offsets[i] + mel_win] for i, x in enumerate(batch)]
 
     labels = [x[1][sig_offsets[i]:sig_offsets[i] + hp.voc_seq_len + 1] for i, x in enumerate(batch)]
+    print(mel_win)
+    print(max_offsets)
+    print(mel_offsets)
+    print(sig_offsets)
 
     mels = np.stack(mels).astype(np.float32)
     labels = np.stack(labels).astype(np.int64)

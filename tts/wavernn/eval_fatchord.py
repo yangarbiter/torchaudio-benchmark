@@ -17,8 +17,11 @@ def main():
 
     preds = []
     for i in range(50):
-        ii = test_ids.index(idx[i]) + 1
-        pred, _ = torchaudio.load(f"./fatchord/model_outputs/nofade_ljspeech_mol.wavernn/797k_steps_{ii}_gen_NOT_BATCHED.wav")
+        ii = test_ids.index(idx[i])
+        pred, _ = torchaudio.load(f"../../tts-subjective/audio_samples/vocoder_wavernn_fatchord/vocoder_wavernn_fatchord_{ii:04d}.wav")
+        #pred, _ = torchaudio.load(f"../../tts-subjective/audio_samples/vocoder_fatchord/vocoder_fatchord_{ii:04d}.wav")
+        #ii = test_ids.index(idx[i]) + 1
+        #pred, _ = torchaudio.load(f"./fatchord/model_outputs/nofade_ljspeech_mol.wavernn/797k_steps_{ii}_gen_NOT_BATCHED.wav")
         #pred, _ = torchaudio.load(f"./fatchord/model_outputs/ljspeech_mol.wavernn/797k_steps_{ii}_gen_NOT_BATCHED.wav")
         preds.append(pred)
 

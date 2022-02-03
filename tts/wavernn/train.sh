@@ -175,13 +175,48 @@
 #    --n-bits 9 \
 #    --checkpoint ./parallel_wavernn_fatchord_ckpt_v8.pt
 
-srun -p train --cpus-per-task=96 -t 128:00:00 --gpus-per-node=8 \
-  python parallel_train.py \
-    --dataset ljspeech_fatchord \
-    --epochs 8000 \
-    --batch-size 128 \
-    --workers 12 \
-    --learning-rate 1e-4 \
-    --n-freq 80 \
-    --loss mol \
-    --checkpoint ./parallel_wavernn_fatchord_ckpt_mol.pt
+#srun -p train --cpus-per-task=96 -t 128:00:00 --gpus-per-node=8 \
+#  python parallel_train.py \
+#    --dataset ljspeech_fatchord \
+#    --epochs 8000 \
+#    --batch-size 128 \
+#    --workers 12 \
+#    --learning-rate 1e-4 \
+#    --n-freq 80 \
+#    --loss mol \
+#    --checkpoint ./parallel_wavernn_fatchord_ckpt_mol.pt
+
+#srun -p train --cpus-per-task=96 -t 128:00:00 --gpus-per-node=8 \
+#  python parallel_train.py \
+#    --dataset ljspeech_fatchord \
+#    --epochs 8000 \
+#    --batch-size 128 \
+#    --workers 12 \
+#    --learning-rate 1e-4 \
+#    --n-freq 80 \
+#    --loss 'crossentropy' \
+#    --n-bits 8 \
+#    --checkpoint ./parallel_wavernn_fatchord_ckpt_v3.pt
+#
+#srun -p train --cpus-per-task=96 -t 128:00:00 --gpus-per-node=8 \
+#  python parallel_train.py \
+#    --dataset ljspeech_nvidia \
+#    --epochs 8000 \
+#    --batch-size 128 \
+#    --workers 12 \
+#    --learning-rate 1e-4 \
+#    --n-freq 80 \
+#    --loss 'crossentropy' \
+#    --n-bits 8 \
+#    --checkpoint ./parallel_wavernn_nvidia_ckpt_v3.pt
+
+python parallel_train.py \
+  --dataset ljspeech_fatchord \
+  --epochs 8000 \
+  --batch-size 1 \
+  --workers 1 \
+  --learning-rate 1e-4 \
+  --n-freq 80 \
+  --loss 'crossentropy' \
+  --n-bits 8 \
+  --checkpoint ./parallel_wavernn_fatchord_ckpt_v3.pt

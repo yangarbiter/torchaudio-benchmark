@@ -1,3 +1,10 @@
+CUDA_VISIBLE_DEVICES=1 python eval_wavernn_nvidia.py --checkpoint ../../tts-subjective/models/parallel_wavernn_nvidia_ckpt_bs32.pt
+
+#CUDA_VISIBLE_DEVICES=0 python eval_wavernn.py --checkpoint ../../tts-subjective/models/parallel_wavernn_ljspeech_fatchord_ckpt_bs32_ep20k.pt
+#3.6803444957733156
+#3.213275489807129
+#0.9691914456736345
+
 # with pretrained model
 # 3.6809009742736816
 # 3.2303855085372923
